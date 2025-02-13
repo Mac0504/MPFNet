@@ -2,7 +2,7 @@
 
 ## Step 1. From the original samples, obtain the sequence from the onset frame to the apex frame.
 
-**👉	get_select_frames.py
+👉	get_select_frames.py
 
 code_file = r'D:\0.Malcolm\1.Micro-expression database\CASME2\CASME2-coding.xlsx'
 
@@ -14,7 +14,7 @@ get_onset_to_apex(code_file, img_source_path, img_dst_path_onset2apex)
 
 ## Step 2. Input the sequence from the starting frame to the peak frame and apply batch resizing to the image sequence, with the resizing coefficient as the hyperparameter.
 
-**👉	motion_magnification.py
+👉	motion_magnification.py
 
 pics_path = r'data\examples\CASME2_pics\CASME2_pics_cropped_onset2apex'
 
@@ -24,7 +24,7 @@ mag_pics(model_path, pics_path, pics_mag_path, amplification)
 
 ## Step 3. From the resized frame sequence, obtain the starting frame and peak frame.
 
-**👉	get_select_frames.py
+👉	get_select_frames.py
 
 img_key_frames_path = r'data\examples\CASME2_pics\CASME2_pics_cropped_key_frames'
 
@@ -32,7 +32,7 @@ get_onset_and_apex_amplified(code_file, img_onset_path, img_apex_path, img_offse
 
 ## Step 4. Based on the starting frame and peak frame, perform frame interpolation, with the number of interpolation frames as the hyperparameter.
 
-**👉	frame_interpolation_Nx.py
+👉	frame_interpolation_Nx.py
 
     # Perform frame interpolation based on the first and last images.
 
