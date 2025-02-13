@@ -1,53 +1,42 @@
-# Video Motion Magnification
+# Video Motion Magnification and Frame Interpolation
 
-This repository implements [T. Oh, R. Jaroensri, C. Kim, M. Elgharib, F. Durand, W. Freeman, W. Matusik "Learning-based Video Motion Magnification" arXiv preprint arXiv:1804.02684 (2018)](https://people.csail.mit.edu/tiam/deepmag/) in PyTorch.
+## Step 1. From the original samples, obtain the sequence from the onset frame to the apex frame.
 
-Please visit the homepage of the research publication above to see the authors' excellent paper, high-quality TensorFlow code, and a ready-to-use training dataset. The authors did an amazing job, which made it easy for me to create this PyTorch implementation. 🙏🏽
+**👉	get_select_frames.py
 
-"Motion magnification" means you pick up and amplify small motions so they're easier to see. It's like a microscope for motion.
+code_file = r'D:\0.Malcolm\1.Micro-expression database\CASME2\CASME2-coding.xlsx'
+img_source_path = r'D:\0.Malcolm\1.Micro-expression database\CASME2\CASME2_preprocessed_Li Xiaobai\CASME2_preprocessed_Li Xiaobai\Cropped'
+img_dst_path_onset2apex = r'data\examples\CASME2_pics\CASME2_pics_cropped_onset2apex'
+get_onset_to_apex(code_file, img_source_path, img_dst_path_onset2apex)
 
-## Samples
+## Step 2. Input the sequence from the starting frame to the peak frame and apply batch resizing to the image sequence, with the resizing coefficient as the hyperparameter.
 
-**👉 [Click here to see sample videos from this implementation](https://twitter.com/cgst/status/1210691577078636544) 👈**
+**👉	motion_magnification.py
 
-You can download the videos [here](https://github.com/cgst/motion-magnification/tree/master/data/examples).
+pics_path = r'data\examples\CASME2_pics\CASME2_pics_cropped_onset2apex'
+pics_mag_path = r'data\examples\CASME2_pics\CASME2_pics_cropped_onset2apex_mag' + str(amplification)
+mag_pics(model_path, pics_path, pics_mag_path, amplification)
 
-## Set up
+## Step 3. From the resized frame sequence, obtain the starting frame and peak frame.
 
-This implementation requires Python 3 and PyTorch. Install dependencies with `pip`:
+**👉	get_select_frames.py
 
-    pip install -r requirements.txt
+img_key_frames_path = r'data\examples\CASME2_pics\CASME2_pics_cropped_key_frames'
+get_onset_and_apex_amplified(code_file, img_onset_path, img_apex_path, img_offset_path, img_key_frames_path)
 
-## Run (examples)
+## Step 4. Based on the starting frame and peak frame, perform frame interpolation, with the number of interpolation frames as the hyperparameter.
 
-    # Get CLI help.
-    python main.py -h
+**👉	frame_interpolation_Nx.py
 
-    # Amplify video 5x.
-    python main.py amplify data/models/20191204-b4-r0.1-lr0.0001-05.pt data/examples/baby.mp4 --amplification=5
+    # Perform frame interpolation based on the first and last images.
 
-    # Amplify 7x and render side-by-side comparison video.
-    python main.py demo data/models/20191204-b4-r0.1-lr0.0001-05.pt data/examples/baby.mp4 baby-demo.mp4 7
+pic1 = r'data\examples\CASME2_pics\CASME2_pics_cropped_key_frames\sub01\EP19_06f\reg_img36.jpg'
+pic2 = r'data\examples\CASME2_pics\CASME2_pics_cropped_key_frames\sub01\EP19_06f\reg_img36.jpg'
+interpolation(args, pic1, pic2)
 
-    # Make video collage with input, 2x and 4x amplified side by side.
-    python main.py demo data/models/20191204-b4-r0.1-lr0.0001-05.pt data/examples/baby.mp4 baby-demo.mp4 2 4
+The storage path for the interpolated frame sequence is:
 
+D:\0.Malcolm\2.Projects\10.Motion_Magnification_and_Frame_Interpolation\data\examples\CASME2_pics\CASME2_pics_cropped_interpolation_frames
 
-## Training
-
-I've included a pre-trained model so you can try it out of the box, but you can also train from scratch if you wish.
-
-First, [download and extract the training dataset](https://groups.csail.mit.edu/graphics/deep_motion_mag/data/readme.txt) published by the authors. It's ~84GB in total compressed, and slighlty larger deflated. Make sure you have enough disk space.
-
-Example train commands:
-
-    # Get CLI help and adjust training parameters with flags.
-    python main.py train -h
-
-    # Train from scratch - this will save a model on disk after each epoch.
-    python main.py train data/train data/models --num-epochs=10
-
-    # Resume training from previously saved snapshot and skip 3 epochs.
-    python main.py train data/train data/models --num-epochs=10 --skip-epochs=3 --load-model-path=data/models/20191203-b10-r0.1-lr0.0001-02.pt
-
-This implementation takes ~2 days to arrive at a decent loss on a Tesla P100 GPU. Let me know if you speed it up.
+Original engineering code for the motion magnification algorithm: 
+[T. Oh, R. Jaroensri, C. Kim, M. Elgharib, F. Durand, W. Freeman, W. Matusik "Learning-based Video Motion Magnification" arXiv preprint arXiv:1804.02684 (2018)](https://people.csail.mit.edu/tiam/deepmag/) in PyTorch.
