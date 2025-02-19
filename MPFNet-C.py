@@ -68,7 +68,7 @@ class MEFeaturesDataset(Dataset):
 
 # Meta-Learning Module with Cascade and Residual Architecture
 class MetaLearningModule(nn.Module):
-    def __init__(self, gfe_model_path, afe_model_path, input_dim, output_dim, gamma=0.1):
+    def __init__(self, gfe_model_path, afe_model_path, input_dim, output_dim):
         super(MetaLearningModule, self).__init__()
         
         # Load GFE and AFE models
@@ -78,9 +78,6 @@ class MetaLearningModule(nn.Module):
         # Load pre-trained model weights for GFE and AFE
         self.gfe.load_state_dict(torch.load(gfe_model_path))
         self.afe.load_state_dict(torch.load(afe_model_path))
-        
-        # Set gamma to control the influence of AFE's similarity score
-        self.gamma = gamma
     
     def forward(self, support_set, query_set):
         # GFE feature extraction
@@ -146,7 +143,7 @@ class ClassificationModule(nn.Module):
 criterion = nn.CrossEntropyLoss()
 
 # Optimizer (Adam optimizer for model training)
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.SGD(model.parameters(), lr=0.05, momentum=0.9)
 
 
 # Training loop function
