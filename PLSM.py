@@ -1,112 +1,126 @@
-# main.py
 import os
-import torch
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from CA-I3D import CAI3D
-import cv2
+import glob
 import numpy as np
+import torch
+from torch.utils.data import Dataset
+from torch.optim import SGD
+from CA_I3D import CAI3D  
 
-# 1. Define dataset paths
-datasets = {
-    'SMIC': 'motion_amplified_ME_samples/SMIC',
-    'CASME_II': 'motion_amplified_ME_samples/CASME_II',
-    'SAMM': 'motion_amplified_ME_samples/SAMM',
-    'MEGC2019_CD': 'motion_amplified_ME_samples/MEGC2019_CD'
-}
+class MEFeaturesDataset(Dataset):
+    def __init__(self, dataset_name, root_dir, transform=None):
+        self.dataset_name = dataset_name
+        self.root_dir = root_dir
+        self.transform = transform
+        self.data = []
+        self.labels = []
+        
+        self._load_data()
 
-# Select the dataset to use (choose 'SMIC', 'CASME_II', 'SAMM', or 'MEGC2019_CD')
-selected_dataset = 'SMIC'
-
-# 2. Dataset loading and preprocessing
-class ExpressionDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path):
-        self.dataset_path = dataset_path
-        self.data = self.load_data()
-
-    def load_data(self):
-        data = []
-        # Load all frames for each sequence in the dataset
-        for label_folder in os.listdir(self.dataset_path):
-            label_folder_path = os.path.join(self.dataset_path, label_folder)
-            if os.path.isdir(label_folder_path):
-                for seq_folder in os.listdir(label_folder_path):
-                    seq_folder_path = os.path.join(label_folder_path, seq_folder)
-                    if os.path.isdir(seq_folder_path):
-                        frames = []
-                        for frame_file in sorted(os.listdir(seq_folder_path)):
-                            frame_path = os.path.join(seq_folder_path, frame_file)
-                            frame = cv2.imread(frame_path)
-                            frames.append(frame)
-                        data.append((np.array(frames), label_folder))  # Save frames and corresponding label
-        return data
-
+    def _load_data(self):
+        if self.dataset_name == 'SMIC':
+            smic_dir = os.path.join(self.root_dir, 'motion_amplified_ME_features', 'SMIC')
+            flow_feature_dir = os.path.join(smic_dir, 'flow_feature')
+            frame_diff_feature_dir = os.path.join(smic_dir, 'frame_diff_feature')
+            
+            flow_features = glob.glob(os.path.join(flow_feature_dir, '*.npy'))
+            frame_diff_features = glob.glob(os.path.join(frame_diff_feature_dir, '*.npy'))
+            
+            for flow_file, frame_diff_file in zip(flow_features, frame_diff_features):
+                flow_feature = np.load(flow_file)
+                frame_diff_feature = np.load(frame_diff_file)
+                
+                # Concatenate along the channel dimension 
+                combined_feature = np.concatenate((flow_feature, frame_diff_feature), axis=-1)
+                
+                label = int(flow_file.split('_')[0])  
+                self.data.append(combined_feature)
+                self.labels.append(label)
+        
+        # For other datasets like 'CASME II', 'SAMM', 'MEGC2019-CD'
+        elif self.dataset_name in ['CASME II', 'SAMM', 'MEGC2019-CD']:
+            dataset_dir = os.path.join(self.root_dir, 'motion_amplified_ME_features', self.dataset_name)
+            feature_files = glob.glob(os.path.join(dataset_dir, '*.npy'))
+            
+            for feature_file in feature_files:
+                feature = np.load(feature_file)
+                label = int(feature_file.split('_')[0])  
+                self.data.append(feature)
+                self.labels.append(label)
+    
     def __len__(self):
         return len(self.data)
-
+    
     def __getitem__(self, idx):
-        frames, label = self.data[idx]
-        frames_tensor = [torch.tensor(frame, dtype=torch.float32).permute(2, 0, 1) for frame in frames]  # Convert to tensor (C, H, W)
-        label_tensor = torch.tensor(int(label))  # Convert label to integer if it's categorical
-        return torch.stack(frames_tensor), label_tensor
+        feature = self.data[idx]
+        label = self.labels[idx]
+        
+        if self.transform:
+            feature = self.transform(feature)
+        
+        return torch.tensor(feature, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
 
-# 3. Cross-Entropy Loss function (already provided by PyTorch)
-# CrossEntropyLoss expects the output of the model to be logits (raw scores for each class).
-# The target is expected to be a tensor of class indices (integers).
-# We use the default cross-entropy loss function from PyTorch.
-class CrossEntropyLoss(torch.nn.Module):
-    def __init__(self):
-        super(CrossEntropyLoss, self).__init__()
 
-    def forward(self, output, target):
-        return F.cross_entropy(output, target)
+# Function to save the model
+def save_model(model, filepath):
+    torch.save(model.state_dict(), filepath)
+    print(f"Model saved to '{filepath}'")
 
-# 4. Model training function
-def train(model, train_loader, optimizer, loss_fn, device):
-    model.train()
-    running_loss = 0.0
+# Training setup
+def train_model(dataset_name, root_dir, num_classes=3, batch_size=32, epochs=80, initial_lr=0.001, lr_decay_epoch=10):
+    # Create dataset and dataloaders
+    train_dataset = MEFeaturesDataset(dataset_name=dataset_name, root_dir=root_dir)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    for frames, labels in train_loader:
-        frames, labels = frames.to(device), labels.to(device)
-
-        optimizer.zero_grad()
-
-        # Forward pass through the model (input: 11 frames)
-        output = model(frames)
-
-        # Compute loss
-        loss = loss_fn(output, labels)
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-
-    return running_loss / len(train_loader)
-
-# 5. Save the model
-def save_model(model, path):
-    torch.save(model.state_dict(), path)
-
-# 6. Main training loop
-if __name__ == "__main__":
-    # Dataset selection and DataLoader setup
-    dataset_path = datasets[selected_dataset]
-    train_dataset = ExpressionDataset(dataset_path)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-
-    # Initialize model, optimizer, and loss function
+    # Initialize model, loss function, and optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = CAI3D().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    loss_fn = CrossEntropyLoss()
+    model = CAI3D(num_classes=num_classes).to(device)
 
-    # Train the model for a specified number of epochs
-    num_epochs = 10
-    for epoch in range(num_epochs):
-        loss = train(model, train_loader, optimizer, loss_fn, device)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss:.4f}")
+    # Define loss function and optimizer (SGD with momentum and weight decay)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = SGD(model.parameters(), lr=initial_lr, momentum=0.9, weight_decay=5e-4)
+
+    # Learning rate scheduler to decay the learning rate every 10 epochs by a factor of 10
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_decay_epoch, gamma=0.1)
+
+    # Training loop
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        correct_preds = 0
+        total_preds = 0
+        
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+
+            # Update weights
+            optimizer.step()
+
+            running_loss += loss.item()
+
+            # Calculate accuracy
+            _, predicted = torch.max(outputs, 1)
+            correct_preds += (predicted == labels).sum().item()
+            total_preds += labels.size(0)
+
+        # Decay learning rate at every 10 epochs
+        scheduler.step()
+
+        epoch_loss = running_loss / len(train_loader)
+        epoch_acc = correct_preds / total_preds
+
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.4f}, LR: {scheduler.get_last_lr()[0]:.6f}")
 
     # Save the trained model
-    save_model(model, 'models/PLSM.pth')
-    print("Model saved to 'models/PLSM.pth'")
+    save_model(model, 'models/PLSM.pth')  
+
+# Example usage
+dataset_name = 'SMIC'  
+root_dir = 'motion_amplified_ME_features'  
+train_model(dataset_name, root_dir)
