@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import glob
 import random
-from CA_I3D import CAI3D  # Assuming CAI3D class is in CA-I3D.py
+from CA_I3D import CAI3D 
 
 
 # Dataset class for loading and processing data
@@ -140,8 +140,8 @@ class ClassificationModule(nn.Module):
 # Loss function (Cross-Entropy Loss) for training
 criterion = nn.CrossEntropyLoss()
 
-# Optimizer (Adam optimizer for model training)
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+# Optimizer: SGD with fixed learning rate and momentum
+optimizer = optim.SGD(model.parameters(), lr=0.05, momentum=0.9)
 
 
 # Training loop function
@@ -192,5 +192,3 @@ model = MetaLearningModule(gfe_model_path, afe_model_path, input_dim, output_dim
 
 # Start training
 train(model, [(support_set, query_set, support_labels, query_labels)], num_epochs=10)
-
-# predicted_class = predict(model, support_set, query_set)
