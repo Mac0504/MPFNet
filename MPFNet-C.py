@@ -7,7 +7,7 @@ import os
 import glob
 import torch.nn as nn
 import torch.optim as optim
-from CA_I3D import CAI3D  # Assuming CAI3D class is in CA-I3D.py
+from CA_I3D import CAI3D
 
 
 # Dataset class to load and preprocess the data
@@ -34,7 +34,7 @@ class MEFeaturesDataset(Dataset):
                 flow_feature = np.load(flow_file)
                 frame_diff_feature = np.load(frame_diff_file)
                 
-                # Concatenate along the channel dimension (assuming the shape is (height, width, time, channels))
+                # Concatenate along the channel dimension 
                 combined_feature = np.concatenate((flow_feature, frame_diff_feature), axis=-1)
                 
                 label = int(flow_file.split('_')[0])  # Extract label from filename
@@ -71,9 +71,9 @@ class MetaLearningModule(nn.Module):
     def __init__(self, gfe_model_path, afe_model_path, input_dim, output_dim, gamma=0.1):
         super(MetaLearningModule, self).__init__()
         
-        # Load GFE and AFE models (using CAI3D class for both)
+        # Load GFE and AFE models
         self.gfe = CAI3D(input_dim=input_dim, output_dim=output_dim)  # GFE feature extractor
-        self.afe = CAI3D(input_dim=input_dim + output_dim, output_dim=output_dim)  # AFE feature extractor (with residual connection)
+        self.afe = CAI3D(input_dim=input_dim + output_dim, output_dim=output_dim)  # AFE feature extractor
         
         # Load pre-trained model weights for GFE and AFE
         self.gfe.load_state_dict(torch.load(gfe_model_path))
