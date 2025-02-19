@@ -10,10 +10,10 @@ import numpy as np
 
 # 1. Define dataset paths
 datasets = {
-    'SMIC': '/path/to/sample_balanced_motion_amplified_ME_dataset/SMIC',
-    'CASME_II': '/path/to/sample_balanced_motion_amplified_ME_dataset/CASME_II',
-    'SAMM': '/path/to/sample_balanced_motion_amplified_ME_dataset/SAMM',
-    'MEGC2019_CD': '/path/to/sample_balanced_motion_amplified_ME_dataset/MEGC2019_CD'
+    'SMIC': 'samples/SMIC',
+    'CASME_II': 'samples/CASME_II',
+    'SAMM': 'samples/SAMM',
+    'MEGC2019_CD': 'samples/MEGC2019_CD'
 }
 
 # Select the dataset to use (choose 'SMIC', 'CASME_II', 'SAMM', or 'MEGC2019_CD')
