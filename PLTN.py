@@ -9,10 +9,10 @@ import numpy as np
 
 # 1. Define dataset selection variables
 datasets = {
-    'SMIC': 'samples/SMIC',
-    'CASME_II': 'samples/CASME_II',
-    'SAMM': 'samples/SAMM',
-    'MEGC2019_CD': 'samples/MEGC2019_CD'
+    'SMIC': 'raw_samples/SMIC',
+    'CASME_II': 'raw_samples/CASME_II',
+    'SAMM': 'raw_samples/SAMM',
+    'MEGC2019_CD': 'raw_samples/MEGC2019_CD'
 }
 
 # Select the dataset to use (you can change this based on your preference)
