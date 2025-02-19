@@ -87,39 +87,6 @@ class MEFeaturesDataset(Dataset):
 
         return torch.tensor(feature, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
 
-    def create_task(self):
-        """
-        Create a task for 3-way 5-shot or 5-way 5-shot learning.
-        Returns: support set, query set, and their labels
-        """
-        # Randomly select `num_classes` classes for the task
-        unique_classes = list(set(self.labels))
-        selected_classes = random.sample(unique_classes, self.num_classes)
-
-        support_set = []
-        query_set = []
-        support_labels = []
-        query_labels = []
-
-        # For each selected class, select `num_shots` samples for the support set and 1 sample for the query set
-        for class_label in selected_classes:
-            class_indices = [i for i, label in enumerate(self.labels) if label == class_label]
-            selected_samples = random.sample(class_indices, self.num_shots + 1)
-
-            # First `num_shots` samples go to the support set, the last one goes to the query set
-            support_set.extend([self.data[i] for i in selected_samples[:-1]])
-            query_set.extend([self.data[i] for i in selected_samples[-1:]])
-            support_labels.extend([self.labels[i] for i in selected_samples[:-1]])
-            query_labels.extend([self.labels[i] for i in selected_samples[-1:]])
-
-        # Convert to tensors
-        support_set = torch.stack(support_set)
-        query_set = torch.stack(query_set)
-        support_labels = torch.tensor(support_labels)
-        query_labels = torch.tensor(query_labels)
-
-        return support_set, query_set, support_labels, query_labels
-
 
 # Define training function
 def train(model, train_loader, optimizer, loss_fn, device):
