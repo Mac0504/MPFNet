@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import glob
+import random
 from CA_I3D import CAI3D  # Assuming CAI3D class is in CA-I3D.py
 
 
@@ -26,7 +27,7 @@ class MEFeaturesDataset(Dataset):
             flow_feature_dir = os.path.join(smic_dir, 'flow_feature')
             frame_diff_feature_dir = os.path.join(smic_dir, 'frame_diff_feature')
             
-            flow_features = glob.glob(os.path.join(flow_feature_dir, '*.npy'))  # Assuming numpy files
+            flow_features = glob.glob(os.path.join(flow_feature_dir, '*.npy'))  
             frame_diff_features = glob.glob(os.path.join(frame_diff_feature_dir, '*.npy'))
             
             for flow_file, frame_diff_file in zip(flow_features, frame_diff_features):
@@ -43,7 +44,7 @@ class MEFeaturesDataset(Dataset):
         # Similarly, handle loading for other datasets like 'CASME II', 'SAMM', 'MEGC2019-CD'
         else:
             dataset_dir = os.path.join(self.root_dir, 'ME_features', self.dataset_name)
-            feature_files = glob.glob(os.path.join(dataset_dir, '*.npy'))  # Assuming numpy files
+            feature_files = glob.glob(os.path.join(dataset_dir, '*.npy'))  
             
             for feature_file in feature_files:
                 feature = np.load(feature_file)
