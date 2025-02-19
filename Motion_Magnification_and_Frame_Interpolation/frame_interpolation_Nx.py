@@ -90,7 +90,7 @@ def main():
 
     # Add --model argument to specify the model to use, default is 'ours_t'
     parser.add_argument('--model', default='ours_t', type=str)
-    parser.add_argument('--n', default=15, type=int)  # Specify the number of frames to generate, default is 15
+    parser.add_argument('--n', default=11, type=int)  # Specify the number of frames to generate, default is 11
     args = parser.parse_args()  # Parse the command-line arguments
 
     # Ensure the specified model exists
