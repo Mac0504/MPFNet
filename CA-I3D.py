@@ -180,4 +180,4 @@ for epoch in range(num_epochs):
         print(f"Checkpoint saved to {checkpoint_path}")
 
 # Save the final model
-torch.save(model.state_dict(), 'ca_i3d_final.pth')
+torch.save(model.state_dict(), 'CA-I3D.pth')
