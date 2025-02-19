@@ -5,9 +5,8 @@ import torch.optim as optim
 from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
-from CA_I3D import CAI3D 
-import cv2 
 import glob
+from CA_I3D import CAI3D  # Assuming CAI3D class is in CA-I3D.py
 
 
 # Dataset class for loading and processing data
@@ -38,12 +37,10 @@ class MEFeaturesDataset(Dataset):
                 combined_feature = np.concatenate((flow_feature, frame_diff_feature), axis=-1)
                 
                 label = int(flow_file.split('_')[0])  # Extract label from filename, adjust this as needed
-                
                 self.data.append(combined_feature)
                 self.labels.append(label)
         
         # Similarly, handle loading for other datasets like 'CASME II', 'SAMM', 'MEGC2019-CD'
-        # For simplicity, assuming the same structure for all datasets (modify if needed)
         else:
             dataset_dir = os.path.join(self.root_dir, 'ME_features', self.dataset_name)
             feature_files = glob.glob(os.path.join(dataset_dir, '*.npy'))  # Assuming numpy files
@@ -74,7 +71,7 @@ class MetaLearningModule(nn.Module):
         
         # Load GFE and AFE models (using CAI3D class for both)
         self.gfe = CAI3D(input_dim=input_dim, output_dim=output_dim)  # GFE feature extractor
-        self.afe = CAI3D(input_dim=input_dim, output_dim=output_dim)  # AFE feature extractor
+        self.afe = CAI3D(input_dim=input_dim + output_dim, output_dim=output_dim)  # AFE feature extractor
         
         # Load pre-trained model weights for GFE and AFE
         self.gfe.load_state_dict(torch.load(gfe_model_path))
@@ -101,6 +98,34 @@ class MetaLearningModule(nn.Module):
         return d_sum
 
 
+# Function to create 3-way 5-shot or 5-way 5-shot tasks
+def create_task(dataset, num_classes=3, num_shots=5):
+    # Create task for 3-way 5-shot or 5-way 5-shot
+    classes = list(set(dataset.labels))  # Get all unique classes
+    selected_classes = random.sample(classes, num_classes)  # Randomly select classes for the task
+    
+    support_set = []
+    query_set = []
+    support_labels = []
+    query_labels = []
+    
+    # For each selected class, select `num_shots` for the support set and 1 for the query set
+    for class_label in selected_classes:
+        class_samples = [i for i, label in enumerate(dataset.labels) if label == class_label]
+        selected_samples = random.sample(class_samples, num_shots + 1)  # Select 5 shots + 1 query sample
+        
+        # First `num_shots` samples go to support set, last one to query set
+        support_set.extend([dataset.data[i] for i in selected_samples[:-1]])
+        query_set.extend([dataset.data[i] for i in selected_samples[-1:]])
+        support_labels.extend([dataset.labels[i] for i in selected_samples[:-1]])
+        query_labels.extend([dataset.labels[i] for i in selected_samples[-1:]])
+    
+    support_set = torch.stack(support_set)
+    query_set = torch.stack(query_set)
+    
+    return support_set, query_set, torch.tensor(support_labels), torch.tensor(query_labels)
+
+
 # Classification Module: Takes fused similarity features and classifies them
 class ClassificationModule(nn.Module):
     def __init__(self, input_dim, num_classes):
@@ -123,7 +148,7 @@ def train(model, train_loader, num_epochs=10):
     model.train()
     for epoch in range(num_epochs):
         total_loss = 0
-        for support_set, query_set, labels in train_loader:
+        for support_set, query_set, support_labels, query_labels in train_loader:
             optimizer.zero_grad()
 
             # Get the fused similarity vector from the MetaLearningModule
@@ -133,7 +158,7 @@ def train(model, train_loader, num_epochs=10):
             output = ClassificationModule(d_sum)
 
             # Compute loss (Cross-Entropy)
-            loss = criterion(output, labels)
+            loss = criterion(output, query_labels)
             loss.backward()
             optimizer.step()
             
@@ -157,12 +182,14 @@ root_dir = 'ME_features'  # Path to your ME_features directory
 
 # Initialize the dataset and DataLoader
 dataset = MEFeaturesDataset(dataset_name=dataset_name, root_dir=root_dir)
-train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+# Create the train_loader using the custom task creation function
+support_set, query_set, support_labels, query_labels = create_task(dataset, num_classes=3, num_shots=5)
 
 # Initialize the model
 model = MetaLearningModule(gfe_model_path, afe_model_path, input_dim, output_dim)
 
 # Start training
-train(model, train_loader)
+train(model, [(support_set, query_set, support_labels, query_labels)], num_epochs=10)
 
 # predicted_class = predict(model, support_set, query_set)
